@@ -9,7 +9,6 @@
   border: 1px solid var(--dsw-alias-border-l2);
   border-radius: 12px;
   background: var(--dsw-alias-bg-layer-3);
-  transition: border-color 0.16s, background 0.16s;
 }
 
 .card:hover {
@@ -67,11 +66,6 @@
 .chevron {
   flex: none;
   color: var(--dsw-alias-label-tertiary);
-  transition: transform 0.16s;
-}
-
-.chevronOpen {
-  transform: rotate(180deg);
 }
 
 .body {
@@ -87,18 +81,8 @@
   color: var(--dsw-alias-label-tertiary);
 }
 
-/* Carried on the header so a collapsed card still says it holds edits. */
-.pending {
-  flex: none;
-  border-radius: 999px;
-  padding: 1px 8px;
-  font-size: 11px;
-  line-height: 17px;
-  font-weight: 500;
-  white-space: nowrap;
-  background: var(--dsw-alias-bg-module-platform);
-  color: var(--dsw-alias-label-secondary);
-}
+/* The Save / Discard buttons' disabled state is the only dirty indicator —
+   no header badge. */
 
 /* One field row: label + control, hint underneath. */
 .field {
@@ -171,11 +155,6 @@
 .dropdownChevron {
   flex: none;
   color: var(--dsw-alias-label-tertiary);
-  transition: transform 0.15s ease;
-}
-
-.dropdownOpen .dropdownChevron {
-  transform: rotate(180deg);
 }
 
 .footer {

@@ -30,13 +30,14 @@ DSH plugin that provides a model-driven `/init` command: it analyzes the current
   - `WANT_A_INIT_SETTINGS_NAMESPACE` (`settingsNamespace('want-a-init')`) is the DSH settings namespace; layered resolution: `cordis.patch.yml` `config.maintenance` → user-settings layer (`want-a-init.maintenance`) → schema default `true`.
   - `apply(ctx, config)` registers the `/init` command via `ctx.commands.register`, then calls `installSettingsSection(...)` to wire the same boolean into the user-settings layer, then `ctx.inject(['systemPrompt'])` adds the persistent `agents-md-maintenance` section. The section's `text:` is a closure over `maintenance`, so toggling is hot-reloaded on the very next LLM call without re-registering.
 - Client (`src/client/`, TSX):
-  - `WantAInitCard.tsx` renders one switch bound to the namespace via `ctx.settingsScope.bind({namespace:'want-a-init'})`. Reads via `useSyncExternalStore(scope.subscribe, scope.getSnapshot)`; writes via `scope.set('maintenance', true)` (user override on) or `scope.unset('maintenance')` (clear user override, fall back to cordis `base` or schema default).
-  - `WantAInitCard.module.css` uses `--dsw-alias-*` tokens matching the DSH settings-panel design language (own chrome; bundle purity gate forbids importing `ui-settings-plugins`' `PluginCard`/`ValueField`).
-  - `locales.ts` ships zh + en for the card copy.
+  - `WantAInitCard.tsx` mirrors `ui-settings-plugins/PluginCard`'s disclosure chrome (collapsed by default, click-to-expand, save/discard footer). Inside the body: one `Menu` dropdown (On / Off, from `dsh-client-ui-primitives`) bound to the namespace via `ctx.settingsScope.bind({namespace:'want-a-init'})`. The dropdown pick stages the new value in local state; Save calls `scope.set('maintenance', value)` or `scope.unset('maintenance')` (when staged matches the cordis `base`, the redundant user entry is cleared instead). Discard drops the staged edit without writing. Reads via `useSyncExternalStore(scope.subscribe, scope.getSnapshot)`; the scope's `value` resolves through `user → base → schema default`.
+  - **No header badge for staged edits.** The Save / Discard buttons' disabled state is the only dirty indicator — earlier the card carried a `未保存` / `Unsaved` pill in the header, but it was removed after a local DSH build's decoration rendered it as a chase-spinner (see Pitfalls).
+  - `WantAInitCard.module.css` uses `--dsw-alias-*` tokens matching `PluginCard.module.css` exactly (own chrome; bundle purity gate forbids value-importing `ui-settings-plugins`' `PluginCard` / `CardForm`).
+  - `locales.ts` ships zh + en for the card copy, dropdown options, and save/discard buttons.
   - `index.ts` registers the card into `settings.plugin.item` with `key: 'want-a-init'`. Loader pairs the key against the namespace the host serves — no registry glue.
 - Bundle (`tsdown.config.ts`):
   - Banner/footer wrap output as `window.__ModuleLoader__.load({ id: 'want-a-init', factory: (require) => {...} })`.
-  - `neverBundle`: `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-locale`, `@deepseek-ai/dsh-client-ui-settings-plugins`, `react` (loader module table answers these; everything else inlines).
+  - `neverBundle`: `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-locale`, `@deepseek-ai/dsh-client-ui-settings-plugins`, `@deepseek-ai/dsh-client-ui-primitives`, `react` (loader module table answers these; everything else inlines).
   - Inline CSS Modules via lightningcss: hashed class map + auto-injected `<style>` tag.
 - Three-layer resolution for `maintenance`: `cordis.patch.yml` `config.maintenance` → user-settings layer (`want-a-init.maintenance`, written by the WebUI) → schema default `true`. Toggle writes only the user layer.
 - The command does NOT write `AGENTS.md` itself: it calls `invocation.agent.followup(createUserMessage(...))` so the model performs the analysis in the next turn, then returns an immediate success message.
@@ -49,18 +50,21 @@ DSH plugin that provides a model-driven `/init` command: it analyzes the current
 - Keep the injected prompt high-signal: exact commands, real architecture, repo-specific pitfalls; no generic advice.
 - Support `force`, `minimal`, and `detailed` modes.
 - The host `systemPrompt` section's `text:` MUST stay a function (`() => maintenance ? MAINTENANCE_TEXT : ''`), not a static string — a literal would be captured once and the WebUI toggle would silently stop working.
-- The client card's switch MUST go through `scope.set` / `scope.unset` only — never call `scope` with anything else; the layered resolution is what makes Reset work.
+- The client card uses the staged form pattern: dropdown pick writes local state, only Save calls `scope.set` / `scope.unset`. A direct write on every pick would lose the user's ability to preview / discard edits and would round-trip on every dropdown open.
+- On Save, prefer `scope.set('maintenance', value)` over `scope.unset('maintenance')` when the staged value DIFFERS from the cordis `base` — `unset` clears the user override, leaving the user with the deployer default they explicitly rejected. Only `unset` when the staged value matches the `base` (redundant entry otherwise).
+- **Do not reintroduce a header badge for staged edits.** The Save / Discard buttons' disabled state is sufficient and survives local-build decoration churn.
 - Bundle patch lives in `cordis.patch.yml`; keep its `id: init-command` unique to avoid duplicate loader entries.
 - Keep `lib/index.d.ts` in sync with `lib/index.js`.
-- Peer dependencies use range declarations (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-commands`, `@deepseek-ai/dsh-llm`, `@deepseek-ai/dsh-settings`, `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-locale`, `@deepseek-ai/dsh-client-ui-settings-plugins`, `react`); `@deepseek-ai/schemastery` is a runtime `dependency`. Do not hardcode patch versions.
+- Peer dependencies use range declarations (`@deepseek-ai/cordis`, `@deepseek-ai/dsh-commands`, `@deepseek-ai/dsh-llm`, `@deepseek-ai/dsh-settings`, `@deepseek-ai/dsh-client-runtime`, `@deepseek-ai/dsh-client-locale`, `@deepseek-ai/dsh-client-ui-settings-plugins`, `@deepseek-ai/dsh-client-ui-primitives`, `react`); `@deepseek-ai/schemastery` is a runtime `dependency`. Do not hardcode patch versions.
 
 ## Pitfalls
 
-- Local `link:` installs fail without `pnpm install` in the repo: the plugin cannot resolve `@deepseek-ai/dsh-llm`, so `/init` never appears in the client. The same applies to `@deepseek-ai/dsh-client-runtime` / `-locale` / `-ui-settings-plugins`: if any one is unresolvable, the card never renders (but the host half still works).
+- Local `link:` installs fail without `pnpm install` in the repo: the plugin cannot resolve `@deepseek-ai/dsh-llm`, so `/init` never appears in the client. The same applies to `@deepseek-ai/dsh-client-runtime` / `-locale` / `-ui-settings-plugins` / `-ui-primitives`: if any one is unresolvable, the card never renders (but the host half still works).
 - When no settings provider is mounted (headless profile), `installSettingsSection` inject block silently no-ops; the section still ships with the cordis default. This is intentional, not a regression.
 - `lib/client.js` is committed; if you change anything under `src/client/`, run `pnpm build` (or rely on the `prepare` script on next install) so the bundle stays in sync. The committed bundle is what the loader serves.
 - The card registers into `settings.plugin.item` keyed by the namespace — a server entry without `dsh.client` declaration in `package.json` makes the client half invisible to the loader, even if `lib/client.js` is present on disk.
 - A manually added `init-command` row in `profiles/web/cordis.patch.yml` can shadow or override this bundle; remove it before installing.
+- **Local DSH builds may inject ad-hoc decorations on common class names.** One such build wires `.pending`-shaped elements to a chase-spinner (`cpSpin` keyframe + `::before` / `::after` shapes); any "Pending" or "Unsaved" pill added to this card would visibly rotate and overlap the text. The card avoids this by omitting the header badge entirely; if you ever reintroduce one, audit the local build's CSS first (`document.querySelectorAll('*').filter(el => getComputedStyle(el).animationName !== 'none')` shows every animated element).
 - `buildPrompt` currently has no covering tests (CodeGraph flags no tests); be careful when changing prompt logic.
 - `.codegraph/` is generated locally by CodeGraph and must stay gitignored; `pnpm-lock.yaml` is committed for reproducible local installs.
 

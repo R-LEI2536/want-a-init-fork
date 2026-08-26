@@ -121,11 +121,7 @@ export function WantAInitCard(props: WantAInitCardProps): ReactElement | null {
           <span className={css.name}>{t('title')}</span>
           <span className={css.description}>{t('description')}</span>
         </span>
-        {dirty ? <span className={css.pending}>{t('unsaved')}</span> : null}
-        <IconChevronDownOutline14
-          size={14}
-          className={`${css.chevron} ${open ? css.chevronOpen : ''}`}
-        />
+        <IconChevronDownOutline14 size={14} className={css.chevron} />
       </button>
       {open ? (
         <div className={css.body}>
@@ -146,10 +142,7 @@ export function WantAInitCard(props: WantAInitCardProps): ReactElement | null {
                     disabled={!writable}
                   >
                     <span>{labelFor(draftValue)}</span>
-                    <IconChevronDownOutline14
-                      size={14}
-                      className={css.dropdownChevron}
-                    />
+                    <IconChevronDownOutline14 size={14} className={css.dropdownChevron} />
                   </button>
                 )}
                 items={[
