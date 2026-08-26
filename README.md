@@ -12,8 +12,9 @@ DeepSeek Harness 的模型驱动 `/init` 命令：让 agent 自己分析当前�
 - **填写式归纳**：提供固定骨架（`Project` / `Commands` / `Architecture` / `Conventions` / `Pitfalls` / `Maintenance`），要求 agent 从仓库证据中逐项填写、归纳；没有可验证内容就写 `Not documented yet`；
 - **模式**：`/init`（默认合并更新）、`/init force`（强制重写）、`/init minimal`（约 40 行内）、`/init detailed`（更详细但无废话）；
 - **常驻 agent 意识**：通过 DSH `systemPrompt` 注入 `agents-md-maintenance` 段落，让每个 agent 会话都记得维护 `AGENTS.md`；
+- **WebUI 开关**：在 DSH Web 设置的 **Plugins** 区出现 `want-a-init` 卡片，开关 `maintenance` 字段即可立刻停用/恢复常驻段落，无需重启；
 - **只维护 `AGENTS.md`**：刻意不创建 `CLAUDE.md`；
-- **纯 host 插件**：无 client/UI、无构建步骤，`lib/` 直接提交。
+- **host + client 双半侧**：host 用 ESM JS 直接提交，client 用 TSX 经 tsdown 打包成 `lib/client.js`（loader 期望的 lazy-CJS factory 格式），由 `prepare` 在 `pnpm install` 时自动重建。
 
 ## 安装
 
@@ -27,4 +28,13 @@ dsh plugin --profile web add github:mexiaosqwq/want-a-init
 
 ```sh
 dsh plugin --profile web add /path/to/want-a-init
+```
+
+### 本地开发 / 调试
+
+首次或修改客户端代码后：
+
+```sh
+pnpm install   # 装 peer deps，同时 prepare 触发 tsdown 重打 lib/client.js
+pnpm build     # 仅客户端：手动重打 lib/client.js
 ```
