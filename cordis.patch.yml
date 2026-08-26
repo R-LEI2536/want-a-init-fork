@@ -5,4 +5,5 @@
 - insert:
     - id: init-command
       name: want-a-init
-      config: {}
+      config:
+        maintenance: true
