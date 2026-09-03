@@ -24,11 +24,19 @@ const PLUGIN_ID = 'want-a-init'
  * Bare specifiers the loader's module table answers — every other
  * dependency is inlined into the bundle. Matches the client's runtime
  * `inject` plus react (loader baseline already includes react).
+ *
+ * DSH 0.1.2-rc.1: the legacy `@deepseek-ai/dsh-client-runtime` is split.
+ * The settings-scope service now lives on
+ * `@deepseek-ai/dsh-client-ui-settings`, and the slot registry merge on
+ * `@deepseek-ai/dsh-client-ui-renderer`. The plugins section's typed slot
+ * declaration (`settings.plugin.item`) still ships from
+ * `@deepseek-ai/dsh-client-ui-settings-plugins` but is consumed through
+ * type-only imports, so it does not need to be runtime-external.
  */
 const EXTERNAL = [
-  '@deepseek-ai/dsh-client-runtime',
   '@deepseek-ai/dsh-client-locale',
-  '@deepseek-ai/dsh-client-ui-settings-plugins',
+  '@deepseek-ai/dsh-client-ui-settings',
+  '@deepseek-ai/dsh-client-ui-renderer',
   '@deepseek-ai/dsh-client-ui-primitives',
   'react',
 ]
